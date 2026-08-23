@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, getToken } from './src/api/client';
+import { api, API_BASE, getToken } from './src/api/client';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -29,13 +29,17 @@ export default function App() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [programs, setPrograms] = useState<Program[]>([]);
+    const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'fail'>('checking');
 
     useEffect(() => {
         (async () => {
             const stored = await getToken();
-            if (stored) {
+            try {
                 await loadPrograms();
-                setToken(stored);
+                setApiStatus('ok');
+                if (stored) setToken(stored);
+            } catch {
+                setApiStatus('fail');
             }
             setReady(true);
         })();
@@ -76,10 +80,25 @@ export default function App() {
         );
     }
 
+    const apiBanner =
+        apiStatus === 'ok' ? (
+            <Text style={[styles.apiLine, styles.apiOk]}>
+                API connected: {API_BASE}
+            </Text>
+        ) : (
+            <Text style={[styles.apiLine, styles.apiFail]}>
+                Cannot reach API at {API_BASE}
+                {'\n'}
+                Fix: run `php artisan serve --host=0.0.0.0 --port=8000` and
+                keep the phone on the same Wi-Fi as this computer.
+            </Text>
+        );
+
     if (!token) {
         return (
             <View style={styles.form}>
                 <Text style={styles.title}>MoroccoPath</Text>
+                {apiBanner}
                 <TextInput
                     style={styles.input}
                     placeholder="Email"
@@ -145,6 +164,9 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     title: { fontSize: 22, fontWeight: '700', color: '#0e7a52' },
+    apiLine: { fontSize: 12, marginBottom: 10 },
+    apiOk: { color: '#0e7a52' },
+    apiFail: { color: '#c0392b' },
     input: {
         borderWidth: 1,
         borderColor: '#d5d9d3',
